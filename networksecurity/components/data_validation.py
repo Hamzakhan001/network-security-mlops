@@ -20,22 +20,23 @@ class DataValidation:
             raise NetworkSecurityException(e,sys)
         
         
-    def validate_number_of_columns(self,dataframe:pd.DataFrame) -> bool:
+    def validate_number_of_columns(self, dataframe: pd.DataFrame) -> bool:
         try:
-            number_of_columns = len(self._schema_config)
-            logging.info(f"Number of columns are :{number_of_columns}")
-            
-            if len(dataframe.columns) == number_of_columns:
-                return True
+            number_of_columns = len(self._schema_config["columns"])
+            logging.info(f"Expected columns: {number_of_columns}")
+            logging.info(f"Actual columns: {len(dataframe.columns)}")
+
+            return len(dataframe.columns) == number_of_columns
+
         except Exception as e:
-            raise NetworkSecurityException(e,sys)
-        
+            raise NetworkSecurityException(e, sys)
+
     @staticmethod
     def read_data(file_path) -> pd.DataFrame:
         try:
             return pd.read_csv(file_path)
         except Exception as e:
-            return NetworkSecurityException(e,sys)
+            raise NetworkSecurityException(e,sys)
         
     def detect_dataset_drift(self,base_df,current_df,threashold=0.05) -> bool:
         try:
@@ -75,9 +76,19 @@ class DataValidation:
             train_dataframe = DataValidation.read_data(train_file_path)
             test_dataframe = DataValidation.read_data(test_file_path)
             
-            status = self.validate_number_of_columns(dataframe=train_dataframe)
+            error_message = ""
+
+            status = self.validate_number_of_columns(train_dataframe)
             if not status:
-                error_message = f"{error_message} Train data frame does not contain all cols"
+                error_message += "Train dataframe does not contain all columns. "
+
+            status = self.validate_number_of_columns(test_dataframe)
+            if not status:
+                error_message += "Test dataframe does not contain all columns. "
+
+            if error_message != "":
+                raise NetworkSecurityException(error_message, sys)
+
             status = self.validate_number_of_columns(dataframe=test_dataframe)
             if not status:
                 error_message = f"{error_message} Test data frame does not contain all cols"
@@ -91,7 +102,8 @@ class DataValidation:
                 self.data_validation_config.valid_train_file_path,index=False,header=True
             )
             test_dataframe.to_csv(
-                self.data_validation_config.valid_train_file_path,index=False,header=True
+                self.data_validation_config.valid_test_file_path,
+                index=False,header=True
             )
             
             data_validation_artifact = DataValidationArtifact(

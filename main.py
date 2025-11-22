@@ -1,33 +1,29 @@
-from networksecurity.components.data_ingestion import DataIngestion
-from networksecurity.exception.exception import NetworkSecurityException
-from networksecurity.entity.config_entity import DataIngestionConfig,DataValidationConfig
-from networksecurity.components.data_transformation import DataTransformation
-from networksecurity.logging.logger import logging
-from networksecurity.entity.config_entity import TrainingPipelineConfig,DataValidationConfig,DataTransformationConfig
-from networksecurity.components.data_validation import DataValidation
 import sys
+from networksecurity.logging.logger import logging
+from networksecurity.exception.exception import NetworkSecurityException
+
+from networksecurity.pipeline.training_pipeline import TrainingPipeline
 
 
-
-if __name__ == '__main__':
+def main():
     try:
-        trainingpipelineconfig = TrainingPipelineConfig()
-        dataingestionconfig = DataIngestionConfig(trainingpipelineconfig)
-        dataingestion = DataIngestion(dataingestionconfig)
-        logging.info("Data Initiation")
-        dataingestionartifact = dataingestion.initiate_data_ingestion()
-        logging.info("Data Initiation completed")
-        datavalidationconfig = DataValidationConfig(trainingpipelineconfig)
-        data_validation = DataValidation(dataingestionartifact,datavalidationconfig)
-        
-        data_validation_artifact=data_validation.initiate_data_validation()
-        print(dataingestionartifact)
-        
-        data_transformation_config =DataTransformationConfig(trainingpipelineconfig)
-        data_transformation= DataTransformation(data_validation_artifact, data_transformation_config)
-        data_transformation_artifact= data_transformation.initiate_data_transformation()
-        print(data_transformation_artifact)
-        
-        
+        logging.info("========== STARTING NETWORK SECURITY TRAINING PIPELINE ==========")
+
+        pipeline = TrainingPipeline()
+
+        # Run the entire workflow
+        model_trainer_artifact = pipeline.run_pipeline()
+        logging.info(f"ModelTrainerArtifact: {model_trainer_artifact}")
+
+        # Upload artifacts to S3
+        pipeline.sync_artifact_dir_to_s3()
+        pipeline.sync_saved_model_dir_to_s3()
+
+        logging.info("========== TRAINING COMPLETED & SYNCED TO S3 ==========")
+
     except Exception as e:
-        raise NetworkSecurityException(e,sys)
+        raise NetworkSecurityException(e, sys)
+
+
+if __name__ == "__main__":
+    main()

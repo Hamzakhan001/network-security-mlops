@@ -73,6 +73,7 @@ async def predict_route(request:Request,file:UploadFile=File(...)):
         network_model = NetworkModel(preprocessor=preprocessor,model=final_model)
         y_pred = network_model.predict(df)
         df['predicted_column'] = y_pred
+        df.to_csv("prediction_output/output.csv")
         table_html = df.to_html(classes='table table-striped')
         return templates.TemplateResponse("table.html",{"request":request,"table":table_html})
     

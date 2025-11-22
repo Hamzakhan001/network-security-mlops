@@ -83,29 +83,36 @@ def load_numpy_array_data(file_path:str) ->np.array:
     except Exception as e:
         raise NetworkSecurityException(e,sys) from e
     
-
-def evaluate_models(X_train,y_train,X_test,y_test,models,params):
+def evaluate_models(X_train, y_train, X_test, y_test, models, params):
     try:
         report = {}
-        
-        for i in range(len(list(models))):
-            model = list(models.values())[i]
-            params = params[list(model.keys())[i]]
-            
-            gs = GridSearchCV(model,params,cv=3)
-            gs.fit(X_train,y_train)
-            
-            model.set_params(**gs.best_params_)
-            model.fit(X_train,y_train)
-            
-            y_train_pred = model.predict(X_train)
-            y_test_pred = model.predict(X_test)
-            
-            
-            train_model_score = r2_score(y_train,y_train_pred)
-            test_model_score = r2_score(y_test,y_test_pred)
-            report[list(model.keys())[i]] = test_model_score
-            
+
+        # Loop through models properly
+        for model_name, model_obj in models.items():
+
+            # Get parameters safely
+            model_params = params.get(model_name, {})
+
+            # If we have hyperparameters, tune the model
+            if len(model_params) > 0:
+                gs = GridSearchCV(model_obj, model_params, cv=3)
+                gs.fit(X_train, y_train)
+                best_model = gs.best_estimator_
+            else:
+                model_obj.fit(X_train, y_train)
+                best_model = model_obj
+
+            # Predictions
+            y_test_pred = best_model.predict(X_test)
+
+            # Use accuracy (since this is classification)
+            from sklearn.metrics import accuracy_score
+            test_score = accuracy_score(y_test, y_test_pred)
+
+            report[model_name] = test_score
+            models[model_name] = best_model 
+
         return report
+
     except Exception as e:
-        raise NetworkSecurityException(e,sys)
+        raise NetworkSecurityException(e, sys)
